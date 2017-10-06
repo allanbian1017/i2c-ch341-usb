@@ -23,6 +23,8 @@
 #include <linux/usb.h>
 #include <linux/i2c.h>
 
+#define DRV_VERSION			"1.0"
+
 #define CH341_I2C_LOW_SPEED 		0	// low speed - 20kHz
 #define CH341_I2C_STANDARD_SPEED 	1	// standard speed - 100kHz
 #define CH341_I2C_FAST_SPEED 		2	// fast speed - 400kHz
@@ -278,5 +280,6 @@ module_usb_driver(i2c_ch341_usb_driver);
 /* ----- end of usb layer ------------------------------------------------ */
 
 MODULE_AUTHOR("Tse Lun Bien <allanbian@gmail.com>");
-MODULE_DESCRIPTION("i2c-ch341-usb driver v1.0");
+MODULE_DESCRIPTION("i2c-ch341-usb driver");
 MODULE_LICENSE("GPL");
+MODULE_VERSION(DRV_VERSION);
