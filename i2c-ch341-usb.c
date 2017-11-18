@@ -76,9 +76,13 @@ static int ch341_i2c_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int
 			dev->out_buf[2] = CH341_CMD_I2C_STM_OUT | 0x1;
 			dev->out_buf[3] = (msgs[0].addr << 1) | 0x1;
 
-			for (i = 0, l = msgs[0].len; l > 0; l--, i++)
-				dev->out_buf[i+4] = CH341_CMD_I2C_STM_IN | (l - 1);
-
+			if (msgs[0].len)
+			{
+				for (i = 0, l = msgs[0].len; l > 1; l--, i++)
+				 	dev->out_buf[i+4] = CH341_CMD_I2C_STM_IN | 1;
+				dev->out_buf[msgs[0].len+3] = CH341_CMD_I2C_STM_IN;
+			}
+			
 			dev->out_buf[msgs[0].len+4]  = CH341_CMD_I2C_STM_STO;
 			dev->out_buf[msgs[0].len+5] = CH341_CMD_I2C_STM_END;
 
@@ -127,10 +131,14 @@ static int ch341_i2c_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int
 			dev->out_buf[2] = CH341_CMD_I2C_STM_OUT | 0x1;
 			dev->out_buf[3] = (msgs[1].addr << 1) | 0x1;
 
-			for (i = 0, l = msgs[1].len; l > 0; l--, i++)
-				dev->out_buf[i+4] = CH341_CMD_I2C_STM_IN | (l - 1);
+			if (msgs[1].len)
+			{
+				for (i = 0, l = msgs[1].len; l > 1; l--, i++)
+				 	dev->out_buf[i+4] = CH341_CMD_I2C_STM_IN | 1;
+				dev->out_buf[msgs[1].len+3] = CH341_CMD_I2C_STM_IN;
+			}
 
-			dev->out_buf[msgs[1].len+4]  = CH341_CMD_I2C_STM_STO;
+			dev->out_buf[msgs[1].len+4] = CH341_CMD_I2C_STM_STO;
 			dev->out_buf[msgs[1].len+5] = CH341_CMD_I2C_STM_END;
 
 			retval = ch341_xfer(dev, msgs[1].len + 5, msgs[1].len);
