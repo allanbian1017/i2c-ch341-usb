@@ -1,10 +1,10 @@
-PRINT/*
+/*
  * Driver for the CH341 USB to I2C and GPIO adapter
  *
  * Copyright (c) 2017 Gunar Schorcht (gunar@schorcht.net)
  *
  * Derived from
- *  
+ *
  *  i2c-ch341-usb.c Copyright (c) 2016 Tse Lun Bien
  *  i2c-ch341.c     Copyright (c) 2014 Marco Gittler
  *  i2c-tiny-usb.c  Copyright (c) 2006-2007 Till Harbaum (Till@Harbaum.org)
@@ -24,7 +24,7 @@ PRINT/*
 #define PRINTK(fmt,...) printk("%s: "fmt"\n", __func__, ##__VA_ARGS__)
 #else
 #define PRINTK(fmt,...)
-#endif 
+#endif
 
 #define CH341_IF_ADDR (&(ch341_dev->usb_if->dev))
 #define DEV_ERR(d,f,...)  dev_err (d,"%s: "f"\n", __FUNCTION__, ##__VA_ARGS__)
@@ -36,8 +36,8 @@ PRINT/*
 #define CHECK_PARAM(cond)         if (!(cond)) return;
 
 #include <linux/version.h>
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
-#error The driver requires at least kernel version 3.10
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0)
+#error The driver requires at least kernel version 3.4
 #else
 
 #include <linux/kernel.h>
@@ -52,18 +52,18 @@ PRINT/*
 #include <linux/irq.h>
 #include <linux/kthread.h>
 
-/** 
-  * ATTENTION: 
+/**
+  * ATTENTION:
   *
   * CH341_POLL_PERIOD_MS in milliseconds defines the rate at which GPIOs are
-  * read from CH341 via USB and thus the maximum rate at which changes on 
+  * read from CH341 via USB and thus the maximum rate at which changes on
   * interrupt driven input ports can be recognized at all.
-  * 
-  * This value must be at least 10 ms, but should be 20 ms or more (if 
+  *
+  * This value must be at least 10 ms, but should be 20 ms or more (if
   * possible) dependent on the performance of your system. Please check your
   * syslog for messages like "GPIO poll period is too short by at least %n
   * msecs". This message is thrown if the defined CH341_POLL_PERIOD_MS is
-  * shorter than the time required for one reading of the GPIOs. 
+  * shorter than the time required for one reading of the GPIOs.
   */
 #define CH341_POLL_PERIOD_MS        10    // see above
 
@@ -99,7 +99,7 @@ PRINT/*
 #define CH341_OK                    0
 
 /**
- *  
+ *
  *  Change the default values in *ch341_board_config* for your configuraton
  *
  *  Configurable are:
@@ -120,8 +120,8 @@ struct ch341_pin_config {
     char*   name;   // GPIO name
     bool    hwirq;  // connected to hardware interrupt (only one pin can have true)
 };
- 
-struct ch341_pin_config ch341_board_config[CH341_GPIO_NUM_PINS] = 
+
+struct ch341_pin_config ch341_board_config[CH341_GPIO_NUM_PINS] =
 {
     // pin  GPIO mode           GPIO name   hwirq
     {   15, CH341_PIN_MODE_OUT , "gpio0"    , 0 }, // used as output
@@ -135,7 +135,7 @@ struct ch341_pin_config ch341_board_config[CH341_GPIO_NUM_PINS] =
 };
 
 // device specific structure
-struct ch341_device 
+struct ch341_device
 {
     // USB device description
     struct usb_device*    usb_dev;  // usb device
@@ -148,7 +148,7 @@ struct ch341_device
     uint8_t in_buf  [CH341_USB_MAX_BULK_SIZE]; // usb input buffer
     uint8_t out_buf [CH341_USB_MAX_BULK_SIZE]; // usb outpu buffer
     uint8_t intr_buf[CH341_USB_MAX_INTR_SIZE]; // usb interrupt buffer
-    
+
     struct urb* intr_urb;
 
     // I2C device description
@@ -156,7 +156,7 @@ struct ch341_device
 
     // GPIO device description
     struct gpio_chip         gpio;                              // chip descriptor for GPIOs
-    uint8_t                  gpio_num;                          // number of pins used as GPIOs    
+    uint8_t                  gpio_num;                          // number of pins used as GPIOs
     uint8_t                  gpio_mask;                         // configuratoin mask defines IN/OUT pins
     uint8_t                  gpio_io_data;                      // current value of CH341 I/O register
     struct task_struct *     gpio_thread;                       // GPIO poll thread
@@ -165,7 +165,7 @@ struct ch341_device
     uint8_t                  gpio_values [CH341_GPIO_NUM_PINS]; // current values (gpio_num elements)
     char*                    gpio_names  [CH341_GPIO_NUM_PINS]; // pin names  (gpio_num elements)
     int                      gpio_irq_map[CH341_GPIO_NUM_PINS]; // GPIO to IRQ map (gpio_num elements)
-    
+
     // IRQ device description
     struct irq_chip   irq;                                // chip descriptor for IRQs
     uint8_t           irq_num;                            // number of pins with IRQs
@@ -209,9 +209,9 @@ static int ch341_cfg_probe (struct ch341_device* ch341_dev)
 
         if (cfg->pin == 0)
             continue;
-            
+
         // --- check correct pin configuration ------------
-            
+
         // is pin configurable at all
         if (cfg->pin < 15 || cfg->pin > 22)
         {
@@ -232,32 +232,32 @@ static int ch341_cfg_probe (struct ch341_device* ch341_dev)
         ch341_dev->gpio_names  [ch341_dev->gpio_num] = cfg->name;
         ch341_dev->gpio_pins   [ch341_dev->gpio_num] = cfg;
         ch341_dev->gpio_irq_map[ch341_dev->gpio_num] = -1; // no valid IRQ
-            
+
         // map CH341 pin to bit D0...D7 in the CH341 I/O data byte
         ch341_dev->gpio_bits[ch341_dev->gpio_num] = (1 << (cfg->pin - 15));
-            
+
         // GPIO pins can generate IRQs when set to input mode
         ch341_dev->gpio_irq_map[ch341_dev->gpio_num] = ch341_dev->irq_num;
         ch341_dev->irq_gpio_map[ch341_dev->irq_num]  = ch341_dev->gpio_num;
-                
+
         if (cfg->hwirq)
         {
             if (ch341_dev->irq_hw != -1)
             {
-                DEV_ERR(CH341_IF_ADDR, 
+                DEV_ERR(CH341_IF_ADDR,
                         "pin %d: only one GPIO can be connected to the hardware IRQ",
                         cfg->pin);
                 return -EINVAL;
             }
-                
+
             ch341_dev->irq_hw = ch341_dev->irq_num;
         }
-               
+
         if (cfg->mode == CH341_PIN_MODE_IN)
             // if pin is INPUT, it has to be masked out in GPIO direction mask
             ch341_dev->gpio_mask &= ~ch341_dev->gpio_bits[ch341_dev->gpio_num];
 
-        DEV_INFO (CH341_IF_ADDR, "%s %s gpio=%d irq=%d %s", 
+        DEV_INFO (CH341_IF_ADDR, "%s %s gpio=%d irq=%d %s",
                   cfg->mode == CH341_PIN_MODE_IN ? "input " : "output",
                   cfg->name, ch341_dev->gpio_num, ch341_dev->irq_num,
                   cfg->hwirq ? "(hwirq)" : "");
@@ -265,7 +265,7 @@ static int ch341_cfg_probe (struct ch341_device* ch341_dev)
         ch341_dev->irq_num++;
         ch341_dev->gpio_num++;
     }
-    
+
     return CH341_OK;
 }
 
@@ -296,8 +296,8 @@ static int ch341_i2c_set_speed (struct ch341_device *ch341_dev)
         return -EINVAL;
     }
 
-    DEV_INFO (CH341_IF_ADDR, "Change i2c bus speed to %s", ch341_i2c_speed_desc[speed]);
-    
+    DEV_INFO (CH341_IF_ADDR, "Change i2c bus speed to %s", ch341_i2c_speed_desc[speed])
+
     mutex_lock (&ch341_lock);
 
     ch341_dev->out_buf[0] = CH341_CMD_I2C_STREAM;
@@ -306,15 +306,15 @@ static int ch341_i2c_set_speed (struct ch341_device *ch341_dev)
     result = ch341_usb_transfer (ch341_dev, 3, 0);
 
     mutex_unlock (&ch341_lock);
-    
+
     if (result < 0)
     {
         DEV_ERR (CH341_IF_ADDR, "failure setting speed %d\n", result);
         return result;
     }
-    
+
     speed_last = speed;
-    
+
     return result;
 }
 
@@ -322,7 +322,7 @@ static int ch341_i2c_read_inputs (struct ch341_device* ch341_dev)
 {
     int result;
 
-    if ((result = ch341_i2c_set_speed (ch341_dev)) < 0) 
+    if ((result = ch341_i2c_set_speed (ch341_dev)) < 0)
         return result;
 
     mutex_lock (&ch341_lock);
@@ -346,7 +346,7 @@ static int ch341_i2c_write_outputs (struct ch341_device* ch341_dev)
 {
     int result;
 
-    if ((result = ch341_i2c_set_speed (ch341_dev)) < 0) 
+    if ((result = ch341_i2c_set_speed (ch341_dev)) < 0)
         return result;
 
     mutex_lock (&ch341_lock);
@@ -357,7 +357,7 @@ static int ch341_i2c_write_outputs (struct ch341_device* ch341_dev)
     ch341_dev->out_buf[3] = CH341_CMD_UIO_STM_END;
 
     // DEV_DBG(CH341_IF_ADDR, "%02x", ch341_dev->out_buf[2]);
-    
+
     result = ch341_usb_transfer(ch341_dev, 4, 0);
 
     mutex_unlock (&ch341_lock);
@@ -370,20 +370,20 @@ static int ch341_i2c_transfer (struct i2c_adapter *adpt, struct i2c_msg *msgs, i
     struct ch341_device* ch341_dev;
     int result;
     int i, j, k;
-    
+
     uint8_t* ob;
     uint8_t* ib;
 
     CHECK_PARAM_RET (adpt, EIO);
     CHECK_PARAM_RET (msgs, EIO);
     CHECK_PARAM_RET (num > 0, EIO);
-        
+
     ch341_dev = (struct ch341_device *)adpt->algo_data;
 
     CHECK_PARAM_RET (ch341_dev, EIO);
-    
+
     mutex_lock (&ch341_lock);
-    
+
     ob = ch341_dev->out_buf;
     ib = ch341_dev->in_buf;
 
@@ -405,7 +405,7 @@ static int ch341_i2c_transfer (struct i2c_adapter *adpt, struct i2c_msg *msgs, i
         }
 
         k = 0;
-    
+
         if (msgs[i].flags & I2C_M_RD) // i2c read operation
         {
             ob[k++] = CH341_CMD_I2C_STREAM;
@@ -424,12 +424,12 @@ static int ch341_i2c_transfer (struct i2c_adapter *adpt, struct i2c_msg *msgs, i
             // if the message is the last one, add STOP condition
             if (i == num-1)
                 ob[k++]  = CH341_CMD_I2C_STM_STO;
-            
+
             ob[k++] = CH341_CMD_I2C_STM_END;
 
             // wirte address byte and read data
             result = ch341_usb_transfer(ch341_dev, k, msgs[i].len);
-            
+
             // if data were read
             if (result > 0)
             {
@@ -443,7 +443,7 @@ static int ch341_i2c_transfer (struct i2c_adapter *adpt, struct i2c_msg *msgs, i
                     memcpy(msgs[i].buf, ib, msgs[i].len);
                 }
             }
-        } 
+        }
         else // i2c write operation
         {
             ob[k++] = CH341_CMD_I2C_STREAM;
@@ -467,12 +467,12 @@ static int ch341_i2c_transfer (struct i2c_adapter *adpt, struct i2c_msg *msgs, i
         if (result < 0)
             break;
     }
-    
+
     mutex_unlock (&ch341_lock);
 
     if (result < 0)
         return result;
-        
+
     return num;
 }
 
@@ -482,7 +482,7 @@ static u32 ch341_i2c_func (struct i2c_adapter *dev)
 }
 
 
-static const struct i2c_algorithm ch341_i2c_algorithm = 
+static const struct i2c_algorithm ch341_i2c_algorithm =
 {
     .master_xfer   = ch341_i2c_transfer,
     .functionality = ch341_i2c_func,
@@ -493,7 +493,7 @@ static int ch341_i2c_probe (struct ch341_device* ch341_dev)
     int result;
 
     CHECK_PARAM_RET (ch341_dev, -EINVAL);
-    
+
     DEV_DBG (CH341_IF_ADDR, "start");
 
     // setup i2c adapter description
@@ -517,7 +517,7 @@ static int ch341_i2c_probe (struct ch341_device* ch341_dev)
 
     // set ch341 i2c speed
     speed_last = CH341_I2C_FAST_SPEED+1;
-    if ((result = ch341_i2c_set_speed (ch341_dev)) < 0) 
+    if ((result = ch341_i2c_set_speed (ch341_dev)) < 0)
         return result;
 
     DEV_DBG (CH341_IF_ADDR, "done");
@@ -528,10 +528,10 @@ static int ch341_i2c_probe (struct ch341_device* ch341_dev)
 static void ch341_i2c_remove (struct ch341_device* ch341_dev)
 {
     CHECK_PARAM (ch341_dev);
-    
+
     if (ch341_dev->i2c_dev.nr)
         i2c_del_adapter (&ch341_dev->i2c_dev);
-    
+
     return;
 }
 
@@ -540,10 +540,10 @@ static void ch341_i2c_remove (struct ch341_device* ch341_dev)
 // ----- irq layer begin -------------------------------------------------
 
 void ch341_irq_enable_disable (struct irq_data *data, bool enable)
-{    
+{
     struct ch341_device *ch341_dev;
     int irq;
-    
+
     CHECK_PARAM (data && (ch341_dev = irq_data_get_irq_chip_data(data)));
 
     // calculate local IRQ
@@ -551,11 +551,11 @@ void ch341_irq_enable_disable (struct irq_data *data, bool enable)
 
     // valid IRQ is in range 0 ... ch341_dev->irq_num-1, invalid IRQ is -1
     if (irq < 0 || irq >= ch341_dev->irq_num) return;
-    
+
     // enable local IRQ
     ch341_dev->irq_enabled[irq] = enable;
 
-    DEV_INFO (CH341_IF_ADDR, "irq=%d enabled=%d", 
+    DEV_INFO (CH341_IF_ADDR, "irq=%d enabled=%d",
               data->irq, ch341_dev->irq_enabled[irq] ? 1 : 0);
 }
 
@@ -573,19 +573,19 @@ int ch341_irq_set_type (struct irq_data *data, unsigned int type)
 {
     struct ch341_device *ch341_dev;
     int irq;
-    
+
     CHECK_PARAM_RET (data && (ch341_dev = irq_data_get_irq_chip_data(data)), -EINVAL);
-    
+
     // calculate local IRQ
     irq = data->irq - ch341_dev->irq_base;
 
     // valid IRQ is in range 0 ... ch341_dev->irq_num-1, invalid IRQ is -1
     if (irq < 0 || irq >= ch341_dev->irq_num) return -EINVAL;
-    
-    ch341_dev->irq_types[irq] = type;    
+
+    ch341_dev->irq_types[irq] = type;
 
     DEV_INFO (CH341_IF_ADDR, "irq=%d flow_type=%d", data->irq, type);
-    
+
     return CH341_OK;
 }
 
@@ -603,7 +603,7 @@ static int ch341_irq_check (struct ch341_device* ch341_dev, uint8_t irq,
 
     // if IRQ is disabled, just return with success
     if (!ch341_dev->irq_enabled[irq]) return CH341_OK;
-    
+
     type = ch341_dev->irq_types[irq];
 
     // for software IRQs dont check if IRQ is the hardware IRQ for rising edges
@@ -613,8 +613,8 @@ static int ch341_irq_check (struct ch341_device* ch341_dev, uint8_t irq,
     if ((type & IRQ_TYPE_EDGE_FALLING && old > new) ||
         (type & IRQ_TYPE_EDGE_RISING  && new > old))
     {
-        // DEV_DBG (CH341_IF_ADDR, "%s irq=%d %d %s", 
-        //          hardware ? "hardware" : "software", 
+        // DEV_DBG (CH341_IF_ADDR, "%s irq=%d %d %s",
+        //          hardware ? "hardware" : "software",
         //          irq, type, (old > new) ? "falling" : "rising");
 
         #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,3,0)
@@ -623,7 +623,7 @@ static int ch341_irq_check (struct ch341_device* ch341_dev, uint8_t irq,
         handle_simple_irq (ch341_dev->irq_base+irq, ch341_dev->irq_descs[irq]);
         #endif
     }
-    
+
     return CH341_OK;
 }
 
@@ -648,22 +648,22 @@ static int ch341_irq_probe (struct ch341_device* ch341_dev)
         DEV_ERR (CH341_IF_ADDR, "failed to allocate IRQ descriptors");
         return result;
     }
-    
+
     ch341_dev->irq_base = result;
-    
+
     DEV_DBG (CH341_IF_ADDR, "irq_base=%d", ch341_dev->irq_base);
 
     for (i = 0; i < ch341_dev->irq_num; i++)
     {
         ch341_dev->irq_descs[i]   = irq_to_desc(ch341_dev->irq_base + i);
         ch341_dev->irq_enabled[i] = false;
-        
+
         irq_set_chip      (ch341_dev->irq_base + i, &ch341_dev->irq);
         irq_set_chip_data (ch341_dev->irq_base + i, ch341_dev);
     }
-    
+
     DEV_DBG (CH341_IF_ADDR, "done");
-   
+
     return CH341_OK;
 }
 
@@ -673,7 +673,7 @@ static void ch341_irq_remove (struct ch341_device* ch341_dev)
 
     if (ch341_dev->irq_base)
         irq_free_descs (ch341_dev->irq_base, ch341_dev->irq_num);
-        
+
     return;
 }
 
@@ -703,15 +703,15 @@ void ch341_gpio_read_inputs (struct ch341_device* ch341_dev)
     {
         // determine local GPIO for each IRQ
         gpio = ch341_dev->irq_gpio_map[i];
-            
+
         // determin old an new value of the bit
         old_value = (old_io_data & ch341_dev->gpio_bits[gpio]) ? 1 : 0;
         new_value = (ch341_dev->gpio_io_data & ch341_dev->gpio_bits[gpio]) ? 1 : 0;
-            
+
         // check for interrupt
         ch341_irq_check (ch341_dev, i, old_value, new_value, false);
     }
-    
+
     // DEV_DBG (CH341_IF_ADDR, "done");
 }
 
@@ -727,7 +727,7 @@ static int ch341_gpio_poll_function (void* argument)
     int sleep_ms = 0;
 
     CHECK_PARAM_RET (ch341_dev, -EINVAL);
-    
+
     DEV_DBG (CH341_IF_ADDR, "start");
 
     while (!kthread_should_stop())
@@ -735,25 +735,25 @@ static int ch341_gpio_poll_function (void* argument)
         // current time in ms
         jiffies_ms = jiffies_to_msecs(jiffies);
         drift_ms   = jiffies_ms - next_poll_ms;
-        
+
         if (poll_period == 0)
         {
             poll_period = CH341_POLL_PERIOD_MS;
-            DEV_ERR (CH341_IF_ADDR, 
+            DEV_ERR (CH341_IF_ADDR,
                      "Poll period 0 ms is invalid, set back to the default of %d ms",
                      CH341_POLL_PERIOD_MS);
         }
-        
+
         if (drift_ms < 0)
         {
             // period was to short, increase corr_ms by 1 ms
-            // DEV_DBG (CH341_IF_ADDR, "polling GPIO is %u ms too early", -drift_ms); 
+            // DEV_DBG (CH341_IF_ADDR, "polling GPIO is %u ms too early", -drift_ms);
             corr_ms = (corr_ms > 0) ? corr_ms - 1 : 0;
-        }   
+        }
         else if (drift_ms > 0 && drift_ms < poll_period)
         {
             // period was to long, decrease corr_ms by 1 ms
-            // DEV_DBG (CH341_IF_ADDR, "polling GPIO is %u ms too late", drift_ms); 
+            // DEV_DBG (CH341_IF_ADDR, "polling GPIO is %u ms too late", drift_ms);
             corr_ms = (corr_ms < poll_period) ? corr_ms + 1 : 0;
         }
 
@@ -763,18 +763,18 @@ static int ch341_gpio_poll_function (void* argument)
         ch341_gpio_read_inputs (ch341_dev);
 
         jiffies_ms = jiffies_to_msecs(jiffies);
-        
+
         // if GPIO read took longer than poll period, do not sleep
         if (jiffies_ms > next_poll_ms)
         {
-            DEV_ERR (CH341_IF_ADDR, 
-                     "GPIO poll period is too short by at least %u msecs", 
+            DEV_ERR (CH341_IF_ADDR,
+                     "GPIO poll period is too short by at least %u msecs",
                      jiffies_ms - next_poll_ms);
         }
         else
         {
             sleep_ms = next_poll_ms - jiffies_ms - corr_ms;
-            
+
             #ifdef CH341_POLL_WITH_SLEEP
             msleep ((sleep_ms <= 0) ? 1 : sleep_ms);
             #else
@@ -786,7 +786,7 @@ static int ch341_gpio_poll_function (void* argument)
     #ifndef CH341_POLL_WITH_SLEEP
     __set_current_state(TASK_RUNNING);
     #endif
-    
+
     DEV_DBG (CH341_IF_ADDR, "stop");
 
     return 0;
@@ -800,20 +800,20 @@ int ch341_gpio_get (struct gpio_chip *chip, unsigned offset)
     struct ch341_device* ch341_dev = container_of(chip, struct ch341_device, gpio);
     #endif
     int value;
-    
+
     CHECK_PARAM_RET (ch341_dev, -EINVAL);
     CHECK_PARAM_RET (offset < ch341_dev->gpio_num, -EINVAL);
 
     value = (ch341_dev->gpio_io_data & ch341_dev->gpio_bits[offset]) ? 1 : 0;
-    
-    // DEV_DBG (CH341_IF_ADDR, "offset=%u value=%d io_data=%02x", 
+
+    // DEV_DBG (CH341_IF_ADDR, "offset=%u value=%d io_data=%02x",
     //          offset, value, ch341_dev->gpio_io_data);
-    
+
     return value;
 }
 
 // FIXME: not tested at the moment (will be introduced with kernel 4.15.0)
-int ch341_gpio_get_multiple (struct gpio_chip *chip, 
+int ch341_gpio_get_multiple (struct gpio_chip *chip,
                              unsigned long *mask, unsigned long *bits)
 {
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,5,0)
@@ -822,7 +822,7 @@ int ch341_gpio_get_multiple (struct gpio_chip *chip,
     struct ch341_device* ch341_dev = container_of(chip, struct ch341_device, gpio);
     #endif
     int i;
-    
+
     CHECK_PARAM_RET (ch341_dev, -EINVAL);
     CHECK_PARAM_RET (mask, -EINVAL);
     CHECK_PARAM_RET (bits, -EINVAL);
@@ -834,7 +834,7 @@ int ch341_gpio_get_multiple (struct gpio_chip *chip,
             *bits |= (((ch341_dev->gpio_io_data & ch341_dev->gpio_bits[i]) ? 1 : 0) << i);
         }
 
-    // DEV_DBG (CH341_IF_ADDR, "mask=%08lx bit=%08lx io_data=%02x", 
+    // DEV_DBG (CH341_IF_ADDR, "mask=%08lx bit=%08lx io_data=%02x",
     //          *mask, *bits, ch341_dev->gpio_io_data);
 
     return CH341_OK;
@@ -847,7 +847,7 @@ void ch341_gpio_set (struct gpio_chip *chip, unsigned offset, int value)
     #else
     struct ch341_device* ch341_dev = container_of(chip, struct ch341_device, gpio);
     #endif
-    
+
     CHECK_PARAM (ch341_dev);
     CHECK_PARAM (offset < ch341_dev->gpio_num);
 
@@ -856,13 +856,13 @@ void ch341_gpio_set (struct gpio_chip *chip, unsigned offset, int value)
     else
         ch341_dev->gpio_io_data &= ~ch341_dev->gpio_bits[offset];
 
-    // DEV_DBG (CH341_IF_ADDR, "offset=%u value=%d io_data=%02x", 
+    // DEV_DBG (CH341_IF_ADDR, "offset=%u value=%d io_data=%02x",
     //          offset, value, ch341_dev->gpio_io_data);
 
     ch341_i2c_write_outputs (ch341_dev);
 }
 
-void ch341_gpio_set_multiple (struct gpio_chip *chip, 
+void ch341_gpio_set_multiple (struct gpio_chip *chip,
                               unsigned long *mask, unsigned long *bits)
 {
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,5,0)
@@ -871,7 +871,7 @@ void ch341_gpio_set_multiple (struct gpio_chip *chip,
     struct ch341_device* ch341_dev = container_of(chip, struct ch341_device, gpio);
     #endif
     int i;
-    
+
     CHECK_PARAM (ch341_dev);
     CHECK_PARAM (mask);
     CHECK_PARAM (bits);
@@ -884,8 +884,8 @@ void ch341_gpio_set_multiple (struct gpio_chip *chip,
             else
                 ch341_dev->gpio_io_data &= ~ch341_dev->gpio_bits[i];
         }
-        
-    // DEV_DBG (CH341_IF_ADDR, "mask=%08lx bit=%08lx io_data=%02x", 
+
+    // DEV_DBG (CH341_IF_ADDR, "mask=%08lx bit=%08lx io_data=%02x",
     //          *mask, *bits, ch341_dev->gpio_io_data);
 
     ch341_i2c_write_outputs (ch341_dev);
@@ -902,7 +902,7 @@ int ch341_gpio_get_direction (struct gpio_chip *chip, unsigned offset)
     struct ch341_device* ch341_dev = container_of(chip, struct ch341_device, gpio);
     #endif
     int mode;
-    
+
     CHECK_PARAM_RET (ch341_dev, -EINVAL);
     CHECK_PARAM_RET (offset < ch341_dev->gpio_num, -EINVAL);
 
@@ -936,11 +936,11 @@ int ch341_gpio_set_direction (struct gpio_chip *chip, unsigned offset, bool inpu
     ch341_dev->gpio_pins[offset]->mode = input ? CH341_PIN_MODE_IN : CH341_PIN_MODE_OUT;
 
     // mask in / mask out the according bit in direction mask
-    if (ch341_dev->gpio_pins[offset]->mode == CH341_PIN_MODE_OUT)    
+    if (ch341_dev->gpio_pins[offset]->mode == CH341_PIN_MODE_OUT)
         ch341_dev->gpio_mask |= ch341_dev->gpio_bits[offset];
     else
         ch341_dev->gpio_mask &= ~ch341_dev->gpio_bits[offset];
-    
+
     return CH341_OK;
 }
 
@@ -956,7 +956,7 @@ int ch341_gpio_direction_output (struct gpio_chip *chip, unsigned offset, int va
     if ((result = ch341_gpio_set_direction (chip, offset, false)) == CH341_OK)
         // set initial output value
         ch341_gpio_set (chip, offset, value);
-    
+
     return result;
 }
 
@@ -968,7 +968,7 @@ int ch341_gpio_to_irq (struct gpio_chip *chip, unsigned offset)
     struct ch341_device* ch341_dev = container_of(chip, struct ch341_device, gpio);
     #endif
     int irq;
-        
+
     CHECK_PARAM_RET (ch341_dev, -EINVAL);
     CHECK_PARAM_RET (offset < ch341_dev->gpio_num, -EINVAL);
 
@@ -989,7 +989,7 @@ static int ch341_gpio_probe (struct ch341_device* ch341_dev)
     int i, j = 0;
 
     CHECK_PARAM_RET (ch341_dev, -EINVAL);
-    
+
     DEV_DBG (CH341_IF_ADDR, "start");
 
     gpio->label     = "ch341";
@@ -1003,14 +1003,16 @@ static int ch341_gpio_probe (struct ch341_device* ch341_dev)
     gpio->owner  = THIS_MODULE;
     gpio->request= NULL;
     gpio->free   = NULL;
-    
+
     gpio->base   = -1;   // request dynamic ID allocation
     gpio->ngpio  = ch341_dev->gpio_num;
-    
+
     gpio->can_sleep = 1;
     gpio->names     = (void*)ch341_dev->gpio_names;
 
+    #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0)
     gpio->get_direction     = ch341_gpio_get_direction;
+    #endif
     gpio->direction_input   = ch341_gpio_direction_input;
     gpio->direction_output  = ch341_gpio_direction_output;
     gpio->get               = ch341_gpio_get;
@@ -1021,7 +1023,7 @@ static int ch341_gpio_probe (struct ch341_device* ch341_dev)
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
     gpio->set_multiple      = ch341_gpio_set_multiple;  // FIXME: NOT TESTED
     #endif
-    
+
     gpio->to_irq            = ch341_gpio_to_irq;
 
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,5,0)
@@ -1031,12 +1033,12 @@ static int ch341_gpio_probe (struct ch341_device* ch341_dev)
     #endif
     {
         DEV_ERR (CH341_IF_ADDR, "failed to register GPIOs: %d", result);
-        // in case of error, reset gpio->base to avoid crashes during free 
+        // in case of error, reset gpio->base to avoid crashes during free
         gpio->base   = -1;
         return result;
     }
 
-    DEV_DBG (CH341_IF_ADDR, "registered GPIOs from %d to %d", 
+    DEV_DBG (CH341_IF_ADDR, "registered GPIOs from %d to %d",
              gpio->base, gpio->base + gpio->ngpio - 1);
 
     for (i = 0; i < ch341_dev->gpio_num; i++)
@@ -1045,7 +1047,7 @@ static int ch341_gpio_probe (struct ch341_device* ch341_dev)
         if ((result = gpio_request(gpio->base + j, ch341_board_config[i].name)) ||
             (result = gpio_export (gpio->base + j, ch341_board_config[i].pin != 21 ? true : false)))
         {
-            DEV_ERR (CH341_IF_ADDR, "failed to export GPIO %s: %d", 
+            DEV_ERR (CH341_IF_ADDR, "failed to export GPIO %s: %d",
                      ch341_board_config[i].name, result);
             // reduce number of GPIOs to avoid crashes during free in case of error
             ch341_dev->gpio_num = j ? j-1 : 0;
@@ -1064,6 +1066,9 @@ static int ch341_gpio_probe (struct ch341_device* ch341_dev)
 static void ch341_gpio_remove (struct ch341_device* ch341_dev)
 {
     int i;
+    #if LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0)
+    int result;
+    #endif
 
     CHECK_PARAM (ch341_dev);
 
@@ -1072,15 +1077,19 @@ static void ch341_gpio_remove (struct ch341_device* ch341_dev)
         kthread_stop(ch341_dev->gpio_thread);
         wake_up_process (ch341_dev->gpio_thread);
     }
-        
+
     if (ch341_dev->gpio.base > 0)
     {
         for (i = 0; i < ch341_dev->gpio_num; ++i)
            gpio_free(ch341_dev->gpio.base + i);
 
+        #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
         gpiochip_remove(&ch341_dev->gpio);
+        #else
+        result = gpiochip_remove(&ch341_dev->gpio);
+        #endif
     }
-       
+
     return;
 }
 
@@ -1100,13 +1109,13 @@ static int ch341_usb_transfer(struct ch341_device *ch341_dev, int out_len, int i
     int retval;
     int actual;
 
-    // DEV_DBG (CH341_IF_ADDR, "bulk_out %d bytes, bulk_in %d bytes", 
+    // DEV_DBG (CH341_IF_ADDR, "bulk_out %d bytes, bulk_in %d bytes",
     //          out_len, (in_len == 0) ? 0 : CH341_USB_MAX_BULK_SIZE);
 
-    retval = usb_bulk_msg(ch341_dev->usb_dev, 
+    retval = usb_bulk_msg(ch341_dev->usb_dev,
                           usb_sndbulkpipe(ch341_dev->usb_dev,
                                           usb_endpoint_num(ch341_dev->ep_out)),
-                          ch341_dev->out_buf, out_len, 
+                          ch341_dev->out_buf, out_len,
                           &actual, 2000);
     if (retval < 0)
         return retval;
@@ -1115,10 +1124,10 @@ static int ch341_usb_transfer(struct ch341_device *ch341_dev, int out_len, int i
         return actual;
 
     memset(ch341_dev->in_buf, 0, sizeof(ch341_dev->in_buf));
-    retval = usb_bulk_msg(ch341_dev->usb_dev, 
-                          usb_rcvbulkpipe(ch341_dev->usb_dev, 
+    retval = usb_bulk_msg(ch341_dev->usb_dev,
+                          usb_rcvbulkpipe(ch341_dev->usb_dev,
                                           usb_endpoint_num(ch341_dev->ep_in)),
-                          ch341_dev->in_buf, CH341_USB_MAX_BULK_SIZE, 
+                          ch341_dev->in_buf, CH341_USB_MAX_BULK_SIZE,
                           &actual, 2000);
 
     if (retval < 0)
@@ -1141,10 +1150,10 @@ static void ch341_usb_complete_intr_urb (struct urb *urb)
 
         // because of asynchronous GPIO read, the GPIO value has to be set to 1
         ch341_dev->gpio_io_data |= ch341_dev->gpio_bits[ch341_dev->irq_gpio_map[ch341_dev->irq_hw]];
-        
+
         // IRQ has to be triggered
         ch341_irq_check (ch341_dev, ch341_dev->irq_hw, 0, 1, true);
-        
+
         // submit next request
         usb_submit_urb(ch341_dev->intr_urb, GFP_ATOMIC);
     }
@@ -1158,7 +1167,7 @@ static void ch341_usb_free_device (struct ch341_device* ch341_dev)
     ch341_irq_remove  (ch341_dev);
     ch341_i2c_remove  (ch341_dev);
     ch341_cfg_remove  (ch341_dev);
-        
+
     if (ch341_dev->intr_urb) usb_free_urb (ch341_dev->intr_urb);
 
     usb_set_intfdata (ch341_dev->usb_if, NULL);
@@ -1178,29 +1187,29 @@ static int ch341_usb_probe (struct usb_interface* usb_if,
     int error;
 
     DEV_DBG (&usb_if->dev, "connect device");
-    
+
     // create and initialize a new device data structure
     if (!(ch341_dev = kzalloc(sizeof(struct ch341_device), GFP_KERNEL)))
     {
         DEV_ERR (&usb_if->dev, "could not allocate device memor");
         usb_put_dev (ch341_dev->usb_dev);
         return -ENOMEM;
-    } 
+    }
 
     // save USB device data
     ch341_dev->usb_dev = usb_dev;
     ch341_dev->usb_if  = usb_if;
-    
+
     // find endpoints
     settings = usb_if->cur_altsetting;
     DEV_DBG (CH341_IF_ADDR, "bNumEndpoints=%d", settings->desc.bNumEndpoints);
-    
+
     for (i = 0; i < settings->desc.bNumEndpoints; i++)
     {
         epd = &settings->endpoint[i].desc;
 
-        DEV_DBG (CH341_IF_ADDR, "i=%d type=%d dir=%d addr=%0x", i, 
-                 usb_endpoint_type(epd), usb_endpoint_dir_in(epd), 
+        DEV_DBG (CH341_IF_ADDR, "i=%d type=%d dir=%d addr=%0x", i,
+                 usb_endpoint_type(epd), usb_endpoint_dir_in(epd),
                  usb_endpoint_num(epd));
 
         if (usb_endpoint_is_bulk_in (epd)) ch341_dev->ep_in   = epd; else
@@ -1213,19 +1222,19 @@ static int ch341_usb_probe (struct usb_interface* usb_if,
         DEV_ERR (&usb_if->dev, "failed to alloc URB");
         ch341_usb_free_device (ch341_dev);
         return -ENOMEM;
-    }    
-    
+    }
+
     usb_fill_int_urb (ch341_dev->intr_urb, ch341_dev->usb_dev,
-                      usb_rcvintpipe(ch341_dev->usb_dev, 
+                      usb_rcvintpipe(ch341_dev->usb_dev,
                                      usb_endpoint_num(ch341_dev->ep_intr)),
                       ch341_dev->intr_buf, CH341_USB_MAX_INTR_SIZE,
-                      ch341_usb_complete_intr_urb, ch341_dev, 
+                      ch341_usb_complete_intr_urb, ch341_dev,
                       ch341_dev->ep_intr->bInterval);
 
     // save the pointer to the new ch341_device in USB interface device data
     usb_set_intfdata(usb_if, ch341_dev);
-    
-    if ((error = ch341_cfg_probe (ch341_dev)) ||  // initialize board configuration    
+
+    if ((error = ch341_cfg_probe (ch341_dev)) ||  // initialize board configuration
         (error = ch341_i2c_probe (ch341_dev)) ||  // initialize I2C adapter
         (error = ch341_irq_probe (ch341_dev)) ||  // initialize IRQs
         (error = ch341_gpio_probe(ch341_dev)))    // initialize GPIOs
@@ -1244,9 +1253,9 @@ static int ch341_usb_probe (struct usb_interface* usb_if,
 static void ch341_usb_disconnect(struct usb_interface *usb_if)
 {
     struct ch341_device* ch341_dev = usb_get_intfdata(usb_if);
-    
+
     DEV_INFO (CH341_IF_ADDR, "disconnected");
-    
+
     ch341_usb_free_device (ch341_dev);
 }
 
@@ -1271,5 +1280,5 @@ MODULE_PARM_DESC(speed, " I2C bus speed: 0 (20 kbps), 1 (100 kbps), 2 (400 kbps)
 
 module_param(poll_period, uint, 0644);
 MODULE_PARM_DESC(poll_period, "GPIO polling period in ms (default 10 ms)");
-#endif // LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+#endif // LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0)
 
