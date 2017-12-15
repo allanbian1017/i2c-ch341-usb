@@ -90,7 +90,7 @@ make uninstall
 ```
 in the source directory.
 
-#### Conflicts with USB to I2C Linux kernel driver
+#### Conflicts with CH341A USB to SPI Linux kernel driver
 
 Since the CH341A also provides an SPI interface as USB device with same id, you have to unload the driver module with
 
