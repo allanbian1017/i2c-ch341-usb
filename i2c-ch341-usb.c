@@ -72,10 +72,10 @@
 #define CH341_USB_MAX_BULK_SIZE     32    // CH341A wMaxPacketSize for ep_02 and ep_82
 #define CH341_USB_MAX_INTR_SIZE     8     // CH341A wMaxPacketSize for ep_81
 
-#define CH341_I2C_LOW_SPEED         0      // low speed - 20kHz
-#define CH341_I2C_STANDARD_SPEED    1      // standard speed - 100kHz
-#define CH341_I2C_FAST_SPEED        2      // fast speed - 400kHz
-#define CH341_I2C_HIGH_SPEED        3      // high speed - 750kHz
+#define CH341_I2C_LOW_SPEED         0     // low speed - 20kHz
+#define CH341_I2C_STANDARD_SPEED    1     // standard speed - 100kHz
+#define CH341_I2C_FAST_SPEED        2     // fast speed - 400kHz
+#define CH341_I2C_HIGH_SPEED        3     // high speed - 750kHz
 
 #define CH341_CMD_I2C_STREAM        0xAA  // I2C stream command
 #define CH341_CMD_UIO_STREAM        0xAB  // UIO stream command
@@ -141,9 +141,9 @@ struct ch341_device
     struct usb_device*    usb_dev;  // usb device
     struct usb_interface* usb_if;   // usb interface
 
-    struct usb_endpoint_descriptor *ep_in;      // usb endpoint bulk in
-    struct usb_endpoint_descriptor *ep_out;     // usb endpoint bulk out
-    struct usb_endpoint_descriptor *ep_intr;    // usb endpoint interrupt in
+    struct usb_endpoint_descriptor *ep_in;     // usb endpoint bulk in
+    struct usb_endpoint_descriptor *ep_out;    // usb endpoint bulk out
+    struct usb_endpoint_descriptor *ep_intr;   // usb endpoint interrupt in
 
     uint8_t in_buf  [CH341_USB_MAX_BULK_SIZE]; // usb input buffer
     uint8_t out_buf [CH341_USB_MAX_BULK_SIZE]; // usb outpu buffer
