@@ -296,7 +296,7 @@ static int ch341_i2c_set_speed (struct ch341_device *ch341_dev)
         return -EINVAL;
     }
 
-    DEV_INFO (CH341_IF_ADDR, "Change i2c bus speed to %s", ch341_i2c_speed_desc[speed])
+    DEV_INFO (CH341_IF_ADDR, "Change i2c bus speed to %s", ch341_i2c_speed_desc[speed]);
 
     mutex_lock (&ch341_lock);
 
@@ -498,7 +498,7 @@ static int ch341_i2c_probe (struct ch341_device* ch341_dev)
 
     // setup i2c adapter description
     ch341_dev->i2c_dev.owner = THIS_MODULE;
-    ch341_dev->i2c_dev.class = I2C_CLASS_HWMON;
+    ch341_dev->i2c_dev.class = 0; // I2C_CLASS_HWMON;
     ch341_dev->i2c_dev.algo  = &ch341_i2c_algorithm;
     ch341_dev->i2c_dev.algo_data = ch341_dev;
     snprintf(ch341_dev->i2c_dev.name, sizeof(ch341_dev->i2c_dev.name),
