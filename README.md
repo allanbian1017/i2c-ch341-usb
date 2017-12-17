@@ -138,7 +138,7 @@ In this configuration, pins 15 to 18 are used as outputs while pins 19 to 22 are
 
 **Please note:** 
 - Pin 21 and pin 22 can only be configured as input. Their direction can't be changed during runtime.
-- Hardware interrupts can be generated only for rising edges of signals.
+- Hardware interrupts can only be generated for rising edges of signals.
 - Only one of the input pins can be configured to generate hardware interrupts (```hwirq``` set to 1).
 - The signal at the input pin that is configured to generate hardware interrupts (```hwirq``` set to 1) **MUST** also be connected to the CH341A **INT** pin 7.
 - If there is no input that should generate hardware interrupts, set ```hwirq``` to 0 for all entries.

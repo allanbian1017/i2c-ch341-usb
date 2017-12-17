@@ -177,12 +177,14 @@ struct ch341_device
     int               irq_hw;                             // IRQ for GPIO with hardware IRQ (default -1)
 };
 
-// ----- variables configurable during runtime
+// ----- variables configurable during runtime ---------------------------
 
 static uint speed      = CH341_I2C_STANDARD_SPEED;    // module parameter speed, default standard speed
 static uint speed_last = CH341_I2C_FAST_SPEED + 1;    // last used speed, default invalid
 
 static uint poll_period = CH341_POLL_PERIOD_MS;       // module parameter poll period
+
+// ----- function prototypes ---------------------------------------------
 
 static int ch341_usb_transfer (struct ch341_device *dev, int out_len, int in_len);
 
@@ -908,7 +910,7 @@ int ch341_gpio_get_direction (struct gpio_chip *chip, unsigned offset)
 
     mode = (ch341_dev->gpio_pins[offset]->mode == CH341_PIN_MODE_IN) ? 1 : 0;
 
-    DEV_DBG (CH341_IF_ADDR, "%d %d", offset, mode);
+    DEV_DBG (CH341_IF_ADDR, "gpio=%d dir=%d", offset, mode);
 
     return mode;
 }
@@ -976,7 +978,7 @@ int ch341_gpio_to_irq (struct gpio_chip *chip, unsigned offset)
     irq = ch341_dev->gpio_irq_map[offset];
     irq = (irq >= 0 ? ch341_dev->irq_base + irq : 0);
 
-    DEV_DBG (CH341_IF_ADDR, "%d %d", offset, irq);
+    DEV_DBG (CH341_IF_ADDR, "gpio=%d irq=%d", offset, irq);
 
     return irq;
 }
@@ -1041,7 +1043,7 @@ static int ch341_gpio_probe (struct ch341_device* ch341_dev)
     DEV_DBG (CH341_IF_ADDR, "registered GPIOs from %d to %d",
              gpio->base, gpio->base + gpio->ngpio - 1);
 
-    for (i = 0; i < ch341_dev->gpio_num; i++)
+    for (i = 0; i < CH341_GPIO_NUM_PINS; i++)
     {
         // in case the pin as CS signal, it is an GPIO pin
         if ((result = gpio_request(gpio->base + j, ch341_board_config[i].name)) ||
@@ -1053,7 +1055,7 @@ static int ch341_gpio_probe (struct ch341_device* ch341_dev)
             ch341_dev->gpio_num = j ? j-1 : 0;
             return result;
         }
-            j++;
+        j++;
     }
 
     ch341_dev->gpio_thread = kthread_run (&ch341_gpio_poll_function, ch341_dev, "i2c-ch341-usb-poll");
@@ -1146,7 +1148,7 @@ static void ch341_usb_complete_intr_urb (struct urb *urb)
     if (!urb->status)
     {
         // hardware IRQs are only generated for one IRQ and rising edges 0 -> 1
-        // DEV_DBG (CH341_IF_ADDR, "%d", urb->status);
+        DEV_DBG (CH341_IF_ADDR, "%d", urb->status);
 
         // because of asynchronous GPIO read, the GPIO value has to be set to 1
         ch341_dev->gpio_io_data |= ch341_dev->gpio_bits[ch341_dev->irq_gpio_map[ch341_dev->irq_hw]];
@@ -1208,7 +1210,7 @@ static int ch341_usb_probe (struct usb_interface* usb_if,
     {
         epd = &settings->endpoint[i].desc;
 
-        DEV_DBG (CH341_IF_ADDR, "i=%d type=%d dir=%d addr=%0x", i,
+        DEV_DBG (CH341_IF_ADDR, "  endpoint=%d type=%d dir=%d addr=%0x", i,
                  usb_endpoint_type(epd), usb_endpoint_dir_in(epd),
                  usb_endpoint_num(epd));
 
