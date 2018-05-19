@@ -56,6 +56,27 @@ static int ch341_xfer(struct i2c_ch341_usb *dev, int out_len, int in_len);
 
 /* ----- begin of i2c layer ---------------------------------------------- */
 
+static int ch341_i2c_check_dev(struct i2c_ch341_usb *dev, u8 addr) {
+  int retval;
+
+  dev->out_buf[0] = CH341_CMD_I2C_STREAM;
+  dev->out_buf[1] = CH341_CMD_I2C_STM_STA;
+  dev->out_buf[2] =
+      CH341_CMD_I2C_STM_OUT; /* NOTE: must be zero length otherwise it messes up
+                                the device */
+  dev->out_buf[3] = (addr << 1) | 0x1;
+  dev->out_buf[4] = CH341_CMD_I2C_STM_IN; /* NOTE: zero length here as well */
+  dev->out_buf[5] = CH341_CMD_I2C_STM_STO;
+  dev->out_buf[6] = CH341_CMD_I2C_STM_END;
+
+  retval = ch341_xfer(dev, 6, 1);
+  if (retval < 0) return retval;
+
+  if (dev->in_buf[0] & 0x80) return -ETIMEDOUT;
+
+  return 0;
+}
+
 static int ch341_i2c_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs,
                           int num) {
   struct i2c_ch341_usb *dev = (struct i2c_ch341_usb *)adapter->algo_data;
@@ -64,6 +85,9 @@ static int ch341_i2c_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs,
   int l;
 
   dev_dbg(&adapter->dev, "master xfer %d messages\n", num);
+
+  retval = ch341_i2c_check_dev(dev, msgs[0].addr);
+  if (retval < 0) return retval;
 
   if (num == 1) {
     /* size larger than endpoint max transfer size */
