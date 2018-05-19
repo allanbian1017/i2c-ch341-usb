@@ -23,7 +23,7 @@
 #include <linux/types.h>
 #include <linux/usb.h>
 
-#define DRV_VERSION "1.0"
+#define DRV_VERSION "1.1"
 
 #define CH341_I2C_LOW_SPEED 0       // low speed - 20kHz
 #define CH341_I2C_STANDARD_SPEED 1  // standard speed - 100kHz
