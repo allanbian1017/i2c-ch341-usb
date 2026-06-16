@@ -23,7 +23,7 @@
 #include <linux/types.h>
 #include <linux/usb.h>
 
-#define DRV_VERSION "1.1"
+#define DRV_VERSION "1.2"
 
 #define CH341_I2C_LOW_SPEED 0      // low speed - 20kHz
 #define CH341_I2C_STANDARD_SPEED 1 // standard speed - 100kHz
@@ -38,6 +38,10 @@
 #define CH341_CMD_I2C_STM_IN 0xC0
 #define CH341_CMD_I2C_STM_SET 0x60
 #define CH341_CMD_I2C_STM_END 0x00
+
+static uint speed = CH341_I2C_STANDARD_SPEED; // Sets default speed as CH341_I2C_STANDARD_SPEED (100kHz)
+module_param(speed, uint, 0644);
+MODULE_PARM_DESC(speed, "I2C speed mode: 0=20kHz, 1=100kHz, 2=400kHz, 3=750kHz");
 
 /* Structure to hold all of our device specific stuff */
 struct i2c_ch341_usb {
@@ -282,7 +286,7 @@ static int i2c_ch341_usb_probe(struct usb_interface *iface,
 
 	/* set ch341 i2c speed */
 	dev->out_buf[0] = CH341_CMD_I2C_STREAM;
-	dev->out_buf[1] = CH341_CMD_I2C_STM_SET | CH341_I2C_STANDARD_SPEED;
+	dev->out_buf[1] = CH341_CMD_I2C_STM_SET | speed;
 	dev->out_buf[2] = CH341_CMD_I2C_STM_END;
 	retval = ch341_xfer(dev, 3, 0);
 	if (retval < 0) {
